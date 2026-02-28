@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>htmlpg_003 WiFi Setup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #111; color: #eee;
+    padding: 20px; max-width: 480px; margin: 0 auto;
+  }
+  h1 { font-size: 1.3em; margin-bottom: 4px; }
+  .status {
+    padding: 10px 14px; border-radius: 8px; margin-bottom: 20px;
+    background: #1a1a2e; border: 1px solid #333;
+  }
+  .status .label { color: #888; font-size: 0.85em; }
+  .status .value { font-weight: 600; }
+  .status .connected { color: #4ade80; }
+  .status .disconnected { color: #f87171; }
+
+  h2 { font-size: 1em; color: #888; margin-bottom: 10px; }
+
+  .network {
+    padding: 12px 14px; border-radius: 8px; margin-bottom: 6px;
+    background: #1a1a2e; border: 1px solid #333;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .network:hover, .network.selected { border-color: #6366f1; }
+  .network .row { display: flex; justify-content: space-between; align-items: center; }
+  .network .ssid { font-weight: 600; }
+  .network .meta { font-size: 0.8em; color: #888; }
+  .signal-bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; }
+  .signal-bars .bar {
+    width: 4px; background: #444; border-radius: 1px;
+  }
+  .signal-bars .bar.active { background: #4ade80; }
+
+  .connect-form {
+    display: none; margin-top: 10px;
+    padding-top: 10px; border-top: 1px solid #333;
+  }
+  .network.selected .connect-form { display: block; }
+
+  input[type="password"], input[type="text"] {
+    width: 100%; padding: 10px 12px; border-radius: 6px;
+    border: 1px solid #444; background: #0d0d1a; color: #eee;
+    font-size: 1em; margin-bottom: 8px;
+  }
+  input:focus { outline: none; border-color: #6366f1; }
+
+  button {
+    width: 100%; padding: 10px; border-radius: 6px;
+    border: none; background: #6366f1; color: #fff;
+    font-size: 1em; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: #4f46e5; }
+  button:disabled { background: #444; cursor: not-allowed; }
+
+  .message {
+    margin-top: 10px; padding: 8px 12px; border-radius: 6px;
+    font-size: 0.9em; display: none;
+  }
+  .message.success { display: block; background: #064e3b; color: #4ade80; }
+  .message.error { display: block; background: #450a0a; color: #f87171; }
+
+  .spinner {
+    display: none; margin: 10px auto;
+    width: 24px; height: 24px;
+    border: 3px solid #444; border-top-color: #6366f1;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  .spinner.active { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<h1>htmlpg_003</h1>
+<p style="color:#888; margin-bottom:16px; font-size:0.85em;">WiFi Configuration</p>
+
+<div class="status">
+  <span class="label">Current network: </span>
+  {% if current %}
+    <span class="value connected">{{ current }}</span>
+    {% if ip %}<span class="meta" style="margin-left:8px;">({{ ip }})</span>{% endif %}
+    <button onclick="doDisconnect(this)" style="float:right; width:auto; padding:6px 14px; background:#dc2626; font-size:0.85em;">Disconnect</button>
+  {% else %}
+    <span class="value disconnected">Not connected</span>
+  {% endif %}
+</div>
+
+<h2>Available Networks</h2>
+
+{% for net in networks %}
+<div class="network" data-ssid="{{ net.ssid }}" onclick="selectNetwork(this)">
+  <div class="row">
+    <span class="ssid">{{ net.ssid }}</span>
+    <span>
+      <span class="signal-bars">
+        <span class="bar {% if net.signal > 0 %}active{% endif %}" style="height:4px"></span>
+        <span class="bar {% if net.signal > 25 %}active{% endif %}" style="height:7px"></span>
+        <span class="bar {% if net.signal > 50 %}active{% endif %}" style="height:10px"></span>
+        <span class="bar {% if net.signal > 75 %}active{% endif %}" style="height:14px"></span>
+      </span>
+    </span>
+  </div>
+  <div class="meta">{{ net.security if net.security else "Open" }}</div>
+  <div class="connect-form">
+    {% if net.security %}
+    <input type="password" placeholder="Password" autocomplete="off" autocapitalize="off">
+    {% endif %}
+    <button onclick="doConnect(event, '{{ net.ssid }}', this)">Connect</button>
+    <div class="spinner"></div>
+    <div class="message"></div>
+  </div>
+</div>
+{% endfor %}
+
+{% if not networks %}
+<p style="color:#888; padding:20px 0;">No networks found. Try refreshing.</p>
+{% endif %}
+
+<script>
+function doDisconnect(btn) {
+  btn.disabled = true;
+  btn.textContent = '...';
+  fetch('/disconnect', { method: 'POST' })
+    .then(r => r.json())
+    .then(() => location.reload())
+    .catch(() => setTimeout(() => location.reload(), 3000));
+}
+
+function selectNetwork(el) {
+  document.querySelectorAll('.network').forEach(n => n.classList.remove('selected'));
+  el.classList.add('selected');
+  const input = el.querySelector('input');
+  if (input) input.focus();
+}
+
+function doConnect(e, ssid, btn) {
+  e.stopPropagation();
+  const card = btn.closest('.network');
+  const input = card.querySelector('input[type="password"]');
+  const password = input ? input.value : '';
+  const spinner = card.querySelector('.spinner');
+  const msg = card.querySelector('.message');
+
+  btn.disabled = true;
+  spinner.classList.add('active');
+  msg.className = 'message';
+  msg.style.display = 'none';
+
+  const form = new FormData();
+  form.append('ssid', ssid);
+  form.append('password', password);
+
+  fetch('/connect', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(data => {
+      spinner.classList.remove('active');
+      btn.disabled = false;
+      msg.className = 'message ' + (data.success ? 'success' : 'error');
+      msg.textContent = data.message;
+      msg.style.display = 'block';
+      if (data.success) {
+        setTimeout(() => location.reload(), 2000);
+      }
+    })
+    .catch(() => {
+      spinner.classList.remove('active');
+      btn.disabled = false;
+      msg.className = 'message error';
+      msg.textContent = 'Request failed. The Pi may be switching networks.';
+      msg.style.display = 'block';
+      setTimeout(() => location.reload(), 5000);
+    });
+}
+</script>
+
+</body>
+</html>

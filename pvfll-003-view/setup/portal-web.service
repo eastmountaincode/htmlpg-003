@@ -1,0 +1,13 @@
+[Unit]
+Description=Flask captive portal for WiFi configuration
+After=portal-interface.service
+Requires=portal-interface.service
+
+[Service]
+WorkingDirectory=/home/htmlpg003/htmlpg/htmlpg_003_screen/portal
+ExecStart=/usr/bin/python3 /home/htmlpg003/htmlpg/htmlpg_003_screen/portal/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

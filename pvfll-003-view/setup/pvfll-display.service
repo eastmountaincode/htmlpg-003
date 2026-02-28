@@ -1,0 +1,16 @@
+[Unit]
+Description=HTMLPG_003 e-ink display controller
+After=network-online.target portal-interface.service
+Wants=network-online.target
+
+[Service]
+User=htmlpg003
+Group=htmlpg003
+WorkingDirectory=/home/htmlpg003/htmlpg/htmlpg_003_screen
+ExecStart=/usr/bin/python3 /home/htmlpg003/htmlpg/htmlpg_003_screen/main.py
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

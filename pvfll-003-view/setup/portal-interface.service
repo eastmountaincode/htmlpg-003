@@ -1,0 +1,14 @@
+[Unit]
+Description=Create virtual WiFi AP interface (wlan1)
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c '/usr/sbin/iw dev wlan1 del 2>/dev/null; /usr/sbin/iw dev wlan0 interface add wlan1 type __ap && sleep 2 && /usr/bin/nmcli con up pvfll-portal'
+ExecStop=/usr/bin/nmcli con down pvfll-portal
+ExecStopPost=-/usr/sbin/iw dev wlan1 del
+
+[Install]
+WantedBy=multi-user.target
