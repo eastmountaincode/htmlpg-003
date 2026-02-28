@@ -363,20 +363,13 @@ def display_centered_message(message: str, font_size: int = 20, bold: bool = Tru
 _boot_drawing = None  # cached drawing for boot splash screens
 
 def _load_boot_drawing():
-    """Load and cache the boot splash drawing (grayscale, scaled for display)."""
+    """Load and cache the pre-processed boot splash drawing."""
     global _boot_drawing
     if _boot_drawing is not None:
         return _boot_drawing
     BOOT_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "images", "boot_splash.png")
-    img_max_h = 230
     try:
-        raw = Image.open(BOOT_IMAGE_PATH).convert('RGBA')
-        white_bg = Image.new('RGBA', raw.size, (255, 255, 255, 255))
-        composited = Image.alpha_composite(white_bg, raw)
-        drawing = composited.convert('L')
-        ratio = img_max_h / drawing.height
-        new_w = int(drawing.width * ratio)
-        _boot_drawing = drawing.resize((new_w, img_max_h), Image.LANCZOS)
+        _boot_drawing = Image.open(BOOT_IMAGE_PATH).convert('L')
         return _boot_drawing
     except Exception as e:
         print(f"Error loading boot splash image: {e}")
