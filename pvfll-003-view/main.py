@@ -155,14 +155,17 @@ def main():
             # Connection health check every 60s
             if pusher_listener and now_mono - last_connection_check >= CONNECTION_CHECK_INTERVAL:
                 last_connection_check = now_mono
-                if not pusher_listener.connected:
-                    log("Connection lost — reconnecting...")
+                if not pusher_listener.check_health():
+                    log("Pusher unhealthy — forcing full reconnect...")
                     try:
-                        pusher_listener.connect()
-                        sync_poll()
-                        last_sync_poll = now_mono
+                        if pusher_listener.force_reconnect():
+                            log("Reconnected OK — syncing data")
+                            sync_poll()
+                            last_sync_poll = now_mono
+                        else:
+                            log("Reconnect failed — will retry next cycle")
                     except Exception as e:
-                        log(f"Reconnect failed: {e}")
+                        log(f"Reconnect error: {e}")
 
             # Sync poll every 5 minutes
             if now_mono - last_sync_poll >= SYNC_POLL_INTERVAL:
